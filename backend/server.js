@@ -322,6 +322,35 @@ app.get('/api/artists', async (req, res) => {
   }
 });
 
+// Get specific artist (Public Profile)
+app.get('/api/artists/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const artist = await prisma.artist.findUnique({
+      where: { id },
+      include: {
+        user: { select: { name: true, email: true } },
+        services: true
+      }
+    });
+
+    if (!artist) {
+      return res.status(404).json({ error: 'Artista no encontrado.' });
+    }
+
+    // Parse portfolio JSON if needed
+    let portfolioArray = [];
+    if (artist.portfolio) {
+      try { portfolioArray = JSON.parse(artist.portfolio); } catch(e) {}
+    }
+    
+    res.json({ ...artist, portfolio: portfolioArray });
+  } catch (error) {
+    console.error('Error fetching artist profile:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

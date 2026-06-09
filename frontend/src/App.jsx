@@ -3,6 +3,7 @@ import Register from './pages/Register';
 import Login from './pages/Login';
 import ArtistProfile from './pages/ArtistProfile';
 import ArtistCatalog from './pages/ArtistCatalog';
+import PublicArtistProfile from './pages/PublicArtistProfile';
 import { Sparkles, LogOut, User } from 'lucide-react';
 import './App.css';
 
@@ -99,6 +100,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/profile" element={<ArtistProfile />} />
           <Route path="/artists" element={<ArtistCatalog />} />
+          <Route path="/artists/:id" element={<PublicArtistProfile />} />
         </Routes>
       </Layout>
     </Router>
