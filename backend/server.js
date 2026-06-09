@@ -172,7 +172,10 @@ app.get('/api/artist/profile', authenticateToken, async (req, res) => {
   try {
     const artist = await prisma.artist.findUnique({
       where: { userId: req.user.userId },
-      include: { user: { select: { name: true, email: true } } }
+      include: { 
+        user: { select: { name: true, email: true } },
+        services: { orderBy: { createdAt: 'desc' } }
+      }
     });
 
     if (!artist) {
@@ -226,6 +229,69 @@ app.put('/api/artist/profile', authenticateToken, async (req, res) => {
     res.json({ message: 'Perfil actualizado con éxito.' });
   } catch (error) {
     console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// Create Service
+app.post('/api/artist/services', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'ARTIST') {
+    return res.status(403).json({ error: 'Solo los artistas pueden agregar servicios.' });
+  }
+
+  const { name, description, duration, requirements } = req.body;
+
+  if (!name || !description) {
+    return res.status(400).json({ error: 'Nombre y descripción son obligatorios.' });
+  }
+
+  try {
+    const artist = await prisma.artist.findUnique({ where: { userId: req.user.userId } });
+    if (!artist) return res.status(404).json({ error: 'Perfil de artista no encontrado.' });
+
+    const newService = await prisma.service.create({
+      data: {
+        artistId: artist.id,
+        name,
+        description,
+        duration,
+        requirements,
+      },
+    });
+
+    res.status(201).json({ message: 'Servicio creado con éxito.', service: newService });
+  } catch (error) {
+    console.error('Error creating service:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// Delete Service
+app.delete('/api/artist/services/:id', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'ARTIST') {
+    return res.status(403).json({ error: 'Solo los artistas pueden eliminar servicios.' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    const artist = await prisma.artist.findUnique({ where: { userId: req.user.userId } });
+    if (!artist) return res.status(404).json({ error: 'Perfil de artista no encontrado.' });
+
+    // Validate that the service belongs to the artist
+    const service = await prisma.service.findFirst({
+      where: { id, artistId: artist.id }
+    });
+
+    if (!service) {
+      return res.status(404).json({ error: 'Servicio no encontrado o no autorizado.' });
+    }
+
+    await prisma.service.delete({ where: { id } });
+
+    res.json({ message: 'Servicio eliminado con éxito.' });
+  } catch (error) {
+    console.error('Error deleting service:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });

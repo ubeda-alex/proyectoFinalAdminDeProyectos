@@ -20,15 +20,27 @@ model User {
 }
 
 model Artist {
-  id        String  @id @default(uuid())
-  userId    String  @unique
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   portfolio   String?
   category    String
-  status      String  @default("pending")
+  status      String    @default("pending")
   description String?
   basePrice   Float?
   location    String?
+  services    Service[]
+}
+
+model Service {
+  id           String   @id @default(uuid())
+  artistId     String
+  artist       Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  name         String
+  description  String
+  duration     String?
+  requirements String?
+  createdAt    DateTime @default(now())
 }
 
 model Client {
