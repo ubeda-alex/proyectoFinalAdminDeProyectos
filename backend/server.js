@@ -296,6 +296,32 @@ app.delete('/api/artist/services/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Get all artists (Public Catalog)
+app.get('/api/artists', async (req, res) => {
+  try {
+    const artists = await prisma.artist.findMany({
+      include: {
+        user: { select: { name: true, email: true } },
+        services: true
+      }
+    });
+
+    // Parse portfolio JSON if needed
+    const mappedArtists = artists.map(artist => {
+      let portfolioArray = [];
+      if (artist.portfolio) {
+        try { portfolioArray = JSON.parse(artist.portfolio); } catch(e) {}
+      }
+      return { ...artist, portfolio: portfolioArray };
+    });
+
+    res.json(mappedArtists);
+  } catch (error) {
+    console.error('Error fetching artists catalog:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

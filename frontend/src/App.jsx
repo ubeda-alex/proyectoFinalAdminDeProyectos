@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import ArtistProfile from './pages/ArtistProfile';
+import ArtistCatalog from './pages/ArtistCatalog';
 import { Sparkles, LogOut, User } from 'lucide-react';
 import './App.css';
 
@@ -23,6 +24,9 @@ function Layout({ children }) {
           <span>ArtSync Platform</span>
         </Link>
         <div className="nav-links">
+          <Link to="/artists" style={{ color: 'var(--text-primary)', textDecoration: 'none', marginRight: '1rem', fontWeight: '500' }}>
+            Explorar Artistas
+          </Link>
           {token ? (
             <>
               {user?.role === 'ARTIST' && (
@@ -94,6 +98,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/profile" element={<ArtistProfile />} />
+          <Route path="/artists" element={<ArtistCatalog />} />
         </Routes>
       </Layout>
     </Router>
