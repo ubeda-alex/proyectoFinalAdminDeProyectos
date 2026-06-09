@@ -1,0 +1,17 @@
+name: CI Pipeline Inicial - Hello World
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  hello-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Mensaje de Bienvenida
+        run: echo "¡Hola Profesor Marvin y equipo! El pipeline inicial de CI funciona impecable."
