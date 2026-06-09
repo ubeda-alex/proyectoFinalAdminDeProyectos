@@ -1,11 +1,14 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
+import ArtistProfile from './pages/ArtistProfile';
 import { Sparkles, LogOut, User } from 'lucide-react';
 import './App.css';
 
 function Layout({ children }) {
   const token = localStorage.getItem('artsync_token');
+  const userStr = localStorage.getItem('artsync_user');
+  const user = userStr ? JSON.parse(userStr) : null;
 
   const handleLogout = () => {
     localStorage.removeItem('artsync_token');
@@ -22,8 +25,13 @@ function Layout({ children }) {
         <div className="nav-links">
           {token ? (
             <>
+              {user?.role === 'ARTIST' && (
+                <Link to="/profile" style={{ color: 'var(--text-primary)', textDecoration: 'none', marginRight: '1rem' }}>
+                  Mi Perfil
+                </Link>
+              )}
               <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <User size={18} /> Sesión Activa
+                <User size={18} /> {user?.name || 'Sesión Activa'}
               </span>
               <button onClick={handleLogout} className="btn" style={{ background: 'transparent', color: 'var(--text-secondary)', padding: '0.5rem' }}>
                 <LogOut size={18} />
@@ -85,6 +93,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/profile" element={<ArtistProfile />} />
         </Routes>
       </Layout>
     </Router>

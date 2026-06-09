@@ -23,9 +23,12 @@ model Artist {
   id        String  @id @default(uuid())
   userId    String  @unique
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  portfolio String?
-  category  String
-  status    String  @default("pending")
+  portfolio   String?
+  category    String
+  status      String  @default("pending")
+  description String?
+  basePrice   Float?
+  location    String?
 }
 
 model Client {

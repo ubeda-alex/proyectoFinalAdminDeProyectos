@@ -149,6 +149,87 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Middleware for token authentication
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Acceso denegado. No hay token.' });
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Token inválido o expirado.' });
+    req.user = user;
+    next();
+  });
+};
+
+// Get Artist Profile
+app.get('/api/artist/profile', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'ARTIST') {
+    return res.status(403).json({ error: 'Solo los artistas pueden acceder a este perfil.' });
+  }
+
+  try {
+    const artist = await prisma.artist.findUnique({
+      where: { userId: req.user.userId },
+      include: { user: { select: { name: true, email: true } } }
+    });
+
+    if (!artist) {
+      return res.status(404).json({ error: 'Perfil de artista no encontrado.' });
+    }
+
+    // Parse JSON string back to array if exists
+    let portfolioArray = [];
+    if (artist.portfolio) {
+      try { portfolioArray = JSON.parse(artist.portfolio); } catch(e) {}
+    }
+    
+    res.json({ ...artist, portfolio: portfolioArray });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// Update Artist Profile
+app.put('/api/artist/profile', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'ARTIST') {
+    return res.status(403).json({ error: 'Solo los artistas pueden editar este perfil.' });
+  }
+
+  const { description, category, basePrice, location, portfolio } = req.body;
+
+  // Validate portfolio limit
+  let portfolioString = null;
+  if (portfolio && Array.isArray(portfolio)) {
+    if (portfolio.length > 5) {
+      return res.status(400).json({ error: 'No puedes agregar más de 5 enlaces en el portafolio.' });
+    }
+    portfolioString = JSON.stringify(portfolio);
+  } else if (portfolio === null) {
+    portfolioString = null;
+  }
+
+  try {
+    const updatedArtist = await prisma.artist.update({
+      where: { userId: req.user.userId },
+      data: {
+        description,
+        category,
+        basePrice: basePrice ? parseFloat(basePrice) : null,
+        location,
+        portfolio: portfolioString,
+      },
+    });
+
+    res.json({ message: 'Perfil actualizado con éxito.' });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
