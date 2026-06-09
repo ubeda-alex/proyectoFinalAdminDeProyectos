@@ -1,21 +1,41 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import RegisterArtist from './pages/RegisterArtist';
-import { Sparkles } from 'lucide-react';
-import './App.css'; // Let's just use index.css entirely or clean App.css
+import Register from './pages/Register';
+import { Sparkles, LogOut, User } from 'lucide-react';
+import './App.css';
 
 function Layout({ children }) {
+  const token = localStorage.getItem('artsync_token');
+
+  const handleLogout = () => {
+    localStorage.removeItem('artsync_token');
+    window.location.href = '/';
+  };
+
   return (
     <div className="app-container">
       <nav className="navbar glass-panel">
-        <div className="nav-brand">
+        <Link to="/" className="nav-brand" style={{ textDecoration: 'none' }}>
           <Sparkles className="brand-icon" />
           <span>ArtSync Platform</span>
-        </div>
+        </Link>
         <div className="nav-links">
-          <Link to="/">Inicio</Link>
-          <Link to="/register-artist" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>
-            Soy Artista
-          </Link>
+          {token ? (
+            <>
+              <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <User size={18} /> Sesión Activa
+              </span>
+              <button onClick={handleLogout} className="btn" style={{ background: 'transparent', color: 'var(--text-secondary)', padding: '0.5rem' }}>
+                <LogOut size={18} />
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/">Inicio</Link>
+              <Link to="/register" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>
+                Registrarse
+              </Link>
+            </>
+          )}
         </div>
       </nav>
       <main className="main-content">
@@ -26,17 +46,29 @@ function Layout({ children }) {
 }
 
 function Home() {
+  const token = localStorage.getItem('artsync_token');
+
   return (
     <div className="hero-section text-center" style={{ marginTop: '4rem' }}>
       <h1 style={{ fontSize: '3rem', marginBottom: '1rem' }}>
         Conecta tu Arte con el <span style={{ color: 'var(--accent-primary)' }}>Mundo</span>
       </h1>
       <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', maxWidth: '600px', margin: '0 auto 2rem' }}>
-        La plataforma centralizada para artistas independientes. Ofrece tus servicios, gestiona tus contratos y coordina tu agenda en un solo lugar.
+        La plataforma centralizada para artistas independientes y clientes. Busca, contrata y gestiona eventos en un solo lugar.
       </p>
-      <Link to="/register-artist" className="btn btn-primary" style={{ fontSize: '1.2rem', padding: '1rem 2rem' }}>
-        Únete como Artista
-      </Link>
+      
+      {!token ? (
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+          <Link to="/register" className="btn btn-primary" style={{ fontSize: '1.1rem', padding: '1rem 2rem' }}>
+            Únete a la Plataforma
+          </Link>
+        </div>
+      ) : (
+        <div className="glass-panel" style={{ padding: '2rem', maxWidth: '400px', margin: '0 auto' }}>
+          <h3 style={{ marginBottom: '1rem' }}>¡Hola! Has iniciado sesión</h3>
+          <p style={{ color: 'var(--text-secondary)' }}>Pronto podrás gestionar tus contrataciones aquí.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -47,7 +79,7 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/register-artist" element={<RegisterArtist />} />
+          <Route path="/register" element={<Register />} />
         </Routes>
       </Layout>
     </Router>

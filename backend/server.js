@@ -1,35 +1,45 @@
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
 
 app.use(cors());
 app.use(express.json());
 
-// Artist Registration Endpoint
-app.post('/api/artists/register', async (req, res) => {
-  const { name, email, password, category, portfolio } = req.body;
+// Unified Registration Endpoint (Client and Artist)
+app.post('/api/auth/register', async (req, res) => {
+  const { name, email, password, role, category, portfolio } = req.body;
 
-  if (!name || !email || !password || !category) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios (nombre, email, contraseña, categoría).' });
+  // Basic validation
+  if (!name || !email || !password || !role) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios (nombre, email, contraseña, rol).' });
   }
 
-  // Password basic validation
   if (password.length < 8) {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
   }
 
+  if (role !== 'CLIENT' && role !== 'ARTIST') {
+    return res.status(400).json({ error: 'Rol inválido.' });
+  }
+
+  if (role === 'ARTIST' && !category) {
+    return res.status(400).json({ error: 'La categoría es obligatoria para artistas.' });
+  }
+
   try {
     // Check if email already exists
-    const existingArtist = await prisma.artist.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
-    if (existingArtist) {
+    if (existingUser) {
       return res.status(409).json({ error: 'Este correo ya está registrado.' });
     }
 
@@ -37,25 +47,54 @@ app.post('/api/artists/register', async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // Create the artist
-    const newArtist = await prisma.artist.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-        category,
-        portfolio,
-        status: 'pending',
-      },
+    // Use a transaction to create the User and their Profile
+    const newUser = await prisma.$transaction(async (tx) => {
+      // 1. Create the base User
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          passwordHash,
+          role,
+        },
+      });
+
+      // 2. Create the specific profile
+      if (role === 'CLIENT') {
+        await tx.client.create({
+          data: {
+            userId: user.id,
+          },
+        });
+      } else if (role === 'ARTIST') {
+        await tx.artist.create({
+          data: {
+            userId: user.id,
+            category,
+            portfolio,
+            status: 'pending',
+          },
+        });
+      }
+
+      return user;
     });
 
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: newUser.id, role: newUser.role, email: newUser.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     res.status(201).json({
-      message: 'Artista registrado con éxito. Estado pendiente de aprobación.',
-      artist: {
-        id: newArtist.id,
-        name: newArtist.name,
-        email: newArtist.email,
-        status: newArtist.status,
+      message: 'Registro exitoso.',
+      token,
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
       },
     });
   } catch (error) {
