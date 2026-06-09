@@ -84,7 +84,7 @@ app.post('/api/auth/register', async (req, res) => {
     const token = jwt.sign(
       { userId: newUser.id, role: newUser.role, email: newUser.email },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '24h' }
     );
 
     res.status(201).json({
@@ -99,6 +99,52 @@ app.post('/api/auth/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Error in /register:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// Unified Login Endpoint
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios (email, contraseña).' });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Credenciales inválidas.' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Credenciales inválidas.' });
+    }
+
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user.id, role: user.role, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({
+      message: 'Inicio de sesión exitoso.',
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('Error in /login:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Register from './pages/Register';
+import Login from './pages/Login';
 import { Sparkles, LogOut, User } from 'lucide-react';
 import './App.css';
 
@@ -31,6 +32,9 @@ function Layout({ children }) {
           ) : (
             <>
               <Link to="/">Inicio</Link>
+              <Link to="/login" style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>
+                Iniciar Sesión
+              </Link>
               <Link to="/register" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>
                 Registrarse
               </Link>
@@ -80,6 +84,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
         </Routes>
       </Layout>
     </Router>
