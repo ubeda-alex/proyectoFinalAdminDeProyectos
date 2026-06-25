@@ -12,25 +12,25 @@ model User {
   name         String
   email        String   @unique
   passwordHash String
-  role         String   @default("CLIENT") // "CLIENT" or "ARTIST"
+  role         String   @default("CLIENT")
   createdAt    DateTime @default(now())
-
   artistProfile Artist?
   clientProfile Client?
 }
 
 model Artist {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  portfolio   String?
-  category    String
-  status      String    @default("pending")
-  description String?
-  basePrice   Float?
-  location    String?
-  services    Service[]
-  bookings    Booking[]
+  id           String         @id @default(uuid())
+  userId       String         @unique
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio    String?
+  category     String
+  status       String         @default("pending")
+  description  String?
+  basePrice    Float?
+  location     String?
+  services     Service[]
+  bookings     Booking[]
+  availability Availability[]
 }
 
 model Service {
@@ -60,10 +60,22 @@ model Booking {
   artist          Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
   serviceId       String?
   service         Service?  @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  status          String    @default("REQUESTED") // REQUESTED | ACCEPTED | COMPLETED | REJECTED
+  status          String    @default("REQUESTED")
   eventDate       DateTime?
   message         String?
   responseMessage String?
+  completedAt     DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+}
+
+model Availability {
+  id        String   @id @default(uuid())
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  date      String   // stored as "YYYY-MM-DD"
+  available Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([artistId, date])
 }
