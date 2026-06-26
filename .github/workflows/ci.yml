@@ -1,13 +1,15 @@
-name: CI
+name: CI/CD Pipeline — ArtisLink
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  build-frontend:
-    name: Build Frontend
+  # ── SCRUM-39: Run automated tests on every push ──────────────────────────
+  test-backend:
+    name: 🧪 Backend Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -17,31 +19,96 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Install dependencies
-        working-directory: ./frontend
-        run: npm install
-
-      - name: Build project
-        working-directory: ./frontend
-        run: npm run build
-
-  build-backend:
-    name: Build Backend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
+      - name: Install backend dependencies
         working-directory: ./backend
         run: npm install
 
       - name: Generate Prisma Client
         working-directory: ./backend
         run: npx prisma generate
+
+      - name: Setup test database
+        working-directory: ./backend
+        run: |
+          cp .env.example .env
+          npx prisma migrate deploy
+        env:
+          DATABASE_URL: file:./test.db
+
+      - name: Run automated tests
+        working-directory: ./backend
+        run: npm test
+        env:
+          DATABASE_URL: file:./test.db
+          JWT_SECRET: test-secret-ci
+
+  # ── Build frontend ────────────────────────────────────────────────────────
+  build-frontend:
+    name: 🏗️ Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm install
+
+      - name: Build frontend (Vite)
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+
+  # ── SCRUM-40: Auto-deploy to Vercel on merge to main ─────────────────────
+  deploy-frontend:
+    name: 🚀 Deploy Frontend → Vercel
+    runs-on: ubuntu-latest
+    needs: [test-backend, build-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy to Vercel (Production)
+        working-directory: ./frontend
+        run: |
+          npm install
+          vercel --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  # ── SCRUM-40: Auto-deploy backend to Render ───────────────────────────────
+  deploy-backend:
+    name: 🚀 Deploy Backend → Render
+    runs-on: ubuntu-latest
+    needs: [test-backend, build-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Trigger Render deploy hook
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        shell: bash
